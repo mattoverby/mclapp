@@ -9,9 +9,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(DownloadProject)
 
-file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/output")
+add_definitions(-DMCL_APP_OUTPUT_DIR="${CMAKE_BINARY_DIR}/output")
 add_definitions(-DMCL_APP_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-add_definitions(-DMCL_APP_OUTPUT_DIR="${CMAKE_CURRENT_BINARY_DIR}/output")
 
 option(MCL_DEBUG "Compile in test mode" OFF)
 option(MCL_BUILD_EXAMPLES "Compile examples" ON)
@@ -41,7 +40,7 @@ set(MCLAPP_INCLUDE_DIRS "${MCLAPP_INCLUDE_DIRS};${EIGEN_INCLUDE_DIR}")
 
 # mclgeom, header only
 download_project(PROJ mclgeom
-	GIT_REPOSITORY git@github.com:mattoverby/mclgeom.git
+	GIT_REPOSITORY https://github.com/mattoverby/mclgeom.git
 	GIT_TAG main
 	PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/external/
 	UPDATE_DISCONNECTED 1
@@ -58,6 +57,9 @@ download_project(PROJ cereal
 set(MCLAPP_INCLUDE_DIRS "${MCLAPP_INCLUDE_DIRS};${cereal_SOURCE_DIR}/include")
 
 # libigl, geom processing and viewer
+# TBH I'm not sure how to use download_project correctly
+# with libigl's sophisticated build scripts.
+# Oh well, this works.
 option(LIBIGL_WITH_OPENGL            "Use OpenGL"                   ON)
 option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"                     ON)
 option(LIBIGL_WITH_OPENGL_GLFW_IMGUI "Use ImGui"                    ON)
