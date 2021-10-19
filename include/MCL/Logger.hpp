@@ -90,6 +90,9 @@ public:
 
 	// Clears all logged data
 	void clear();
+	
+	// Returns directory of logger output
+	static std::string get_output_dir();
 
 	// Custom logging callback
 	std::function<void()> begin_frame;

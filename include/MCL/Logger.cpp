@@ -37,6 +37,11 @@ void Logger::clear()
 	per_frame_data.clear();
 }
 
+std::string Logger::get_output_dir()
+{
+    return std::string(MCL_APP_OUTPUT_DIR)+'/';
+}
+
 void Logger::start(int iter, const std::string &f)
 {
 	const std::lock_guard<std::mutex> lock(log_mutex);
@@ -368,7 +373,7 @@ std::string Logger::print_counters()
 
 std::string Logger::make_write_prefix(std::string test)
 {
-	return std::string(MCL_APP_OUTPUT_DIR)+'/'+test+'/'+test+'_';
+	return Logger::get_output_dir()+test+'/'+test+'_';
 }
 
 void Logger::write_csv(std::string prefix)

@@ -105,13 +105,11 @@ set(MCLAPP_LIBRARIES
 
 add_library(mclapp ${MCLAPP_SRC})
 target_link_libraries(mclapp PUBLIC ${MCLAPP_LIBRARIES})
-message(${MCLAPP_INCLUDE_DIRS})
 target_include_directories(mclapp SYSTEM PUBLIC ${MCLAPP_INCLUDE_DIRS})
 
 # Examples
 if (MCL_BUILD_EXAMPLES)
     add_executable(scaf ${CMAKE_CURRENT_SOURCE_DIR}/examples/scaf.cpp)
-    #target_include_directories(scaf SYSTEM PUBLIC ${MCLAPP_INCLUDE_DIRS})
     target_link_libraries(scaf mclapp)
 endif()
 
