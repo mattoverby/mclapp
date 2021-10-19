@@ -1,0 +1,4 @@
+#ifndef IGL_STB_IMAGE_EXPORT_H
+#define IGL_STB_IMAGE_EXPORT_H 1
+#define IGL_STB_IMAGE_EXPORT
+#endif
