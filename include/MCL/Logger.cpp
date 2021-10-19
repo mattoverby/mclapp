@@ -332,7 +332,7 @@ std::string Logger::print_counters()
 	std::sort(double_sorted_avg.begin(), double_sorted_avg.end());
 	std::reverse(double_sorted_avg.begin(), double_sorted_avg.end());
 
-	bool print_dbl_counters = false;
+	bool print_dbl_counters = true;
 
 	std::stringstream ss;
 	for (std::pair<int, std::string> it : int_sorted_total)

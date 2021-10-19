@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 
 	// Export per-iteration timings/counters to csv
 	Logger &log = Logger::get();
-	log.write_all("octopus"); // output/octopus/octopus.csv
+	log.write_all("camel"); // output/camel/camel_log.csv
 
 	return EXIT_SUCCESS;
 }
@@ -83,7 +83,7 @@ static inline void end_frame()
 
 void Optimizer::init()
 {
-	MicroTimer t;
+	mclStart("Optimizer::init");
 	const MeshData &meshdata = MeshData::get();
 	const RowMatrixXd &V = meshdata.get_rest(); // 3D verts
 	const RowMatrixXi &F = meshdata.get_elements(); // faces
@@ -104,7 +104,6 @@ void Optimizer::init()
 	Logger &log = Logger::get();
 	log.end_frame = end_frame;
 	end_frame(); // add meshdata to log at iter = -1
-	mclSetValue("init_ms", t.elapsed_ms());
 }
 
 void Optimizer::step()
@@ -112,5 +111,12 @@ void Optimizer::step()
 	mclStartFrame();
 	igl::triangle::scaf_solve(scaf_data, 1);
 	X = scaf_data.w_uv.topRows(X.rows());
+	
+    mclSetCounter("example_counter", X.size());
+    mclSetValue("example_value", X.norm());
+	
 	// end of step(), end_frame is called internally
+	{
+    	mclStart("Optimizer::step::example_scope");
+	}
 }
