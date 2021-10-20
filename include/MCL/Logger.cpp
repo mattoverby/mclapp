@@ -616,6 +616,12 @@ void SetCounterCurrentFrame::set_int(const char *l, int cnt)
 	log.set_int_counter(log.curr_frame, std::string(l), cnt);
 }
 
+void SetCounterCurrentFrame::add_int(const char *l, int cnt)
+{
+	Logger &log = Logger::get();
+	log.add_to_int_counter(log.curr_frame, std::string(l), cnt);
+}
+
 void SetCounterCurrentFrame::set_double(const char *l, double cnt)
 {
 	Logger &log = Logger::get();

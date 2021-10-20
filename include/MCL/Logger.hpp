@@ -20,11 +20,13 @@ namespace mcl
 // Set counters/values/runtime for the current frame
 // Use:
 //   mclSetCounter("label1", int_counter);
+//   mclAddCounter("label1", int_value); // adds to counter
 //   mclSetValue("label2", dbl_value);
 //   mclAddRuntime(elapsed_s);
 //   mclAddFrameRuntime(iter, elapsed_s); // special: adds time to specific iter
 //
 #define	mclSetCounter(l, cnt) mcl::SetCounterCurrentFrame::set_int(l, cnt)
+#define	mclAddCounter(l, cnt) mcl::SetCounterCurrentFrame::add_int(l, cnt)
 #define	mclSetValue(l, cnt) mcl::SetCounterCurrentFrame::set_double(l, cnt)
 #define	mclAddRuntime(cnt) mcl::SetCounterCurrentFrame::add_runtime(cnt)
 #define	mclAddFrameRuntime(iter, cnt) mcl::SetCounterCurrentFrame::add_runtime(iter, cnt)
@@ -150,6 +152,7 @@ class SetCounterCurrentFrame
 {
 public:
 	static void set_int(const char *l, int cnt);
+	static void add_int(const char *l, int cnt);
 	static void set_double(const char *l, double cnt);
 	static void add_runtime(double cnt);
 	static void add_runtime(int iter, double cnt);
