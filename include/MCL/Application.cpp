@@ -44,8 +44,8 @@ struct RuntimeOptions
 	Texture ref_tex;
 #ifdef MCL_APP_USE_IMGUI
 	igl::opengl::glfw::imgui::ImGuiMenu gui;
-	int gui_plugin_idx;
 #endif
+	int gui_plugin_idx;
 	mcl::Screenshot screenshotter;
 	mcl::Application *app_ptr;
 	igl::opengl::glfw::Viewer *viewer_ptr;
@@ -171,7 +171,7 @@ static inline void toggle_gui()
 {
     if (!runtime.app_ptr || !runtime.viewer_ptr)
         return;
-
+#ifdef MCL_APP_USE_IMGUI
     runtime.app_ptr->options.show_gui = !runtime.app_ptr->options.show_gui;
     if (runtime.app_ptr->options.show_gui)
     {
@@ -186,6 +186,7 @@ static inline void toggle_gui()
         runtime.viewer_ptr->plugins.erase(runtime.viewer_ptr->plugins.begin()+pidx);
         runtime.gui_plugin_idx = -1;
     }
+#endif
 }
 
 static inline void cycle_matcap()

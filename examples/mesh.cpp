@@ -16,10 +16,12 @@ using namespace Eigen;
 
 bool custom_gui_options()
 {
+#ifdef MCL_APP_USE_IMGUI
 	if (ImGui::CollapsingHeader("custom options", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 	    if (ImGui::Button("test button")) { std::cout << "Hello!" << std::endl; }
 	}
+#endif
     return false; // true to update rendering
 }
 
