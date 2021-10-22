@@ -1,2 +1,3 @@
 # mclapp
-Wrapper for libigl viewer
+
+Wrapper for libigl viewer to automate certain functions.

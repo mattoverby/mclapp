@@ -8,7 +8,20 @@
 
 #include <igl/readOBJ.h>
 
+#ifdef MCL_APP_USE_IMGUI
+    #include <igl/opengl/glfw/imgui/ImGuiMenu.h>
+#endif
+
 using namespace Eigen;
+
+bool custom_gui_options()
+{
+	if (ImGui::CollapsingHeader("custom options", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+	    if (ImGui::Button("test button")) { std::cout << "Hello!" << std::endl; }
+	}
+    return false; // true to update rendering
+}
 
 int main(int argc, char *argv[])
 {
@@ -28,7 +41,8 @@ int main(int argc, char *argv[])
 
 	// Create app that directly interfaces with MeshData
 	mcl::Application app;
-	app.options.name = "sphere";
+	app.options.name = "sphere"; // optional
+	app.draw_gui_callback = &custom_gui_options; // optional
     app.start();
 
 	return EXIT_SUCCESS;

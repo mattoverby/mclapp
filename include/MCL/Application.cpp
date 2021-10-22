@@ -467,6 +467,12 @@ static inline void callback_draw_viewer_menu()
         if (ImGui::Checkbox("render UV", &runtime.app_ptr->options.render_UV)){ needs_render_update = true; }
         if (ImGui::Combo("matcap (m)", &runtime.matcap_index, runtime.matcap_labels)) { needs_render_update = true; }
     }
+    
+    if (runtime.app_ptr->draw_gui_callback != nullptr)
+    {
+        if (runtime.app_ptr->draw_gui_callback()) { needs_render_update = true; }
+    }
+    
 	if (needs_render_update) { runtime.app_ptr->redraw(runtime.X); }
 #endif
 } // end imgui menu

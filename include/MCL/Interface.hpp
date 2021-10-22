@@ -22,6 +22,7 @@ public:
 		bool export_frame_obj; // export obj file each frame
 		bool animate; // solve frames continuously
 		bool quit_next_frame;
+
 		// Application only:
 		int start_mesh_color; // starting color from list
 		bool flat_shading; // non-smooth triangles

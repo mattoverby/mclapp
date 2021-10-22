@@ -28,6 +28,7 @@ public:
 	void redraw(const RowMatrixXd &X);
 
 	std::function<void(char key)> key_pressed_callback;
+	std::function<bool()> draw_gui_callback; // true if update render
 
 protected:
 	bool pre_draw();
