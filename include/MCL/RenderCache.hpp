@@ -19,6 +19,9 @@ namespace mcl
 class RenderCache : public Singleton<RenderCache>
 {
 public:
+    typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> RowMatrixXd;
+    typedef Eigen::Matrix<int,Eigen::Dynamic,Eigen::Dynamic,Eigen::RowMajor> RowMatrixXi;
+    
 	// Clears cached data
 	void clear();
 	
@@ -33,17 +36,23 @@ public:
         const Eigen::Matrix<double,DIM,1> &p1,
         const Eigen::Vector3d &c = Eigen::Vector3d(1,0,0));
 
-    // Add points to bottom of matrix (for libigl)
-    void append_points(Eigen::MatrixXd &P, Eigen::MatrixXd &C);
+    void add_triangles(
+        const Eigen::MatrixXd &V,  // cols = 2 or 3
+        const Eigen::MatrixXi &F,  // cols = 3
+        const Eigen::MatrixXd &C); // cols = 3
 
-    // Add lines to bottom of matrix (for libigl)
+    // Used by mcl::Application for rendering with for libigl
+    void append_points(Eigen::MatrixXd &P, Eigen::MatrixXd &C);
     void append_lines(Eigen::MatrixXd &E0, Eigen::MatrixXd &E1, Eigen::MatrixXd &C);
+    void append_triangles(RowMatrixXd &V, RowMatrixXi &F, RowMatrixXd &C);
     
 protected:
     std::vector<Eigen::Vector3d> pts;
     std::vector<Eigen::Vector3d> pt_colors;
     std::vector<std::pair<Eigen::Vector3d,Eigen::Vector3d> > lines;
     std::vector<Eigen::Vector3d> line_colors;
+    Eigen::MatrixXd tri_V, tri_C; // per-tri colors
+    Eigen::MatrixXi tri_F;
 
 }; // class rendercache
 

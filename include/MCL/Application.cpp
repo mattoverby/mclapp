@@ -38,7 +38,6 @@ struct RuntimeOptions
 {
 	bool solve_next_frame;
 	bool solved_last_frame;
-	bool align_next_update;
 	bool screenshot_each_frame;
 	std::vector<Vector3d> mesh_colors; // default per-mesh colors
 	int matcap_index; // 0 = none
@@ -55,7 +54,6 @@ struct RuntimeOptions
 	RuntimeOptions() :
 		solve_next_frame(false),
 		solved_last_frame(false),
-		align_next_update(true),
 		screenshot_each_frame(false),
 		matcap_index(0),
 		app_ptr(nullptr)
@@ -224,17 +222,29 @@ void Application::redraw(const RowMatrixXd &X)
 		RowMatrixXi F;
 		append_mesh(X, V, F, C, N);
 
-		mclAssert(V.rows() == X.rows() && V.cols() == 3);
+		mclAssert(V.cols() == 3);
 		viewer->data().set_face_based(C.rows()==F.rows());
 		viewer->data().set_mesh(V, F);
 		viewer->data().set_colors(C);
 		viewer->data().set_normals(N);
 	}
+    else
+    {
+    	RowMatrixXd V, C;
+		RowMatrixXi F;
+        RenderCache &cache = RenderCache::get();
+        cache.append_triangles(V, F, C);
+        if (V.rows()>0)
+        {
+            viewer->data().set_mesh(V, F);
+            viewer->data().set_colors(C);
+        }
+    }
 
 	// Add points and lines from cache
+    RenderCache &cache = RenderCache::get();
 	MatrixXd pts, pt_colors;
 	MatrixXd edge0, edge1, edge_colors;
-	RenderCache &cache = RenderCache::get();
 	cache.append_points(pts, pt_colors);
 	cache.append_lines(edge0, edge1, edge_colors);
 	if (pts.rows()) { viewer->data().add_points(pts, pt_colors); }
@@ -242,8 +252,9 @@ void Application::redraw(const RowMatrixXd &X)
 	cache.clear();
 }
 
-void Application::append_mesh(const RowMatrixXd &X, RowMatrixXd &V, RowMatrixXi &F,
-	RowMatrixXd &C,  RowMatrixXd &N)
+void Application::append_mesh(const RowMatrixXd &X,
+    RowMatrixXd &V, RowMatrixXi &F,
+	RowMatrixXd &C, RowMatrixXd &N)
 {
 	const MeshData &meshdata = MeshData::get();
 	F = meshdata.get_faces();
@@ -261,7 +272,6 @@ void Application::append_mesh(const RowMatrixXd &X, RowMatrixXd &V, RowMatrixXi 
 	// Compute normals and colors
 	if (options.flat_shading || force_flat_shading)
 	{
-		igl::per_face_normals(V, F, N);
 		C = RowMatrixXd::Zero(F.rows(), 3);
 		const VectorXi &F_offset = meshdata.get_face_offsets();
 		for (int i=0; i<n_meshes; ++i)
@@ -272,6 +282,12 @@ void Application::append_mesh(const RowMatrixXd &X, RowMatrixXd &V, RowMatrixXi 
 			C.block(F_offset[i],0,nf,3).col(1).array() = runtime.mesh_colors[c_idx][1];
 			C.block(F_offset[i],0,nf,3).col(2).array() = runtime.mesh_colors[c_idx][2];
 		}
+	
+	    // TODO: deal with normals from RenderCache
+	    RenderCache &cache = RenderCache::get();
+	    cache.append_triangles(V, F, C);
+		
+	    igl::per_face_normals(V, F, N);
 	}
 	else
 	{
