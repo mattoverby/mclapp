@@ -9,12 +9,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(DownloadProject)
 
-add_definitions(-DMCL_APP_OUTPUT_DIR="${CMAKE_BINARY_DIR}/output")
-add_definitions(-DMCL_APP_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
-
 option(MCL_DEBUG "Compile in test mode" OFF)
 option(MCL_BUILD_EXAMPLES "Compile examples" ON)
 option(MCL_HEADLESS "Compile without render libs" OFF)
+option(MCL_USE_IMGUI "Compile with IMGUI" OFF)
+
+add_definitions(-DMCL_APP_OUTPUT_DIR="${CMAKE_BINARY_DIR}/output")
+add_definitions(-DMCL_APP_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+if (MCL_USE_IMGUI)
+    add_definitions(-DMCL_APP_USE_IMGUI)
+endif()
 
 # I know you should not set build type directly and instead let the user
 # set it, but this is way more convenient.
@@ -62,7 +66,8 @@ set(MCLAPP_INCLUDE_DIRS "${MCLAPP_INCLUDE_DIRS};${cereal_SOURCE_DIR}/include")
 # Oh well, this works.
 option(LIBIGL_WITH_OPENGL            "Use OpenGL"                   ON)
 option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"                     ON)
-option(LIBIGL_WITH_OPENGL_GLFW_IMGUI "Use ImGui"                    ON)
+#option(LIBIGL_WITH_OPENGL_GLFW_IMGUI "Use ImGui"                    MCL_USE_IMGUI)
+set(LIBIGL_WITH_OPENGL_GLFW_IMGUI                                   MCL_USE_IMGUI)
 option(LIBIGL_WITH_PNG               "Use PNG"                      ON)
 option(LIBIGL_WITH_TETGEN            "Use Tetgen"                   OFF)
 option(LIBIGL_WITH_TRIANGLE          "Use Triangle"                 ON)
@@ -95,13 +100,20 @@ file(COPY # why do I have to do this?
 	${CMAKE_CURRENT_SOURCE_DIR}/include/)
 set(MCLAPP_INCLUDE_DIRS "${MCLAPP_INCLUDE_DIRS};${CMAKE_CURRENT_SOURCE_DIR}/include")
 
+if(MCL_USE_IMGUI)
+    set(IMGUI_LIB igl::opengl_glfw_imgui)
+else()
+    message("MCL USE IMGUI OFF")
+    set(IMGUI_LIB "")
+endif()
+
 # dependent libs
 set(MCLAPP_LIBRARIES
 	igl::core
 	igl::png
 	igl::triangle
 	igl::opengl_glfw
-	igl::opengl_glfw_imgui
+    ${IMGUI_LIB}
 	${TBB_LIBRARIES}
 	stdc++fs)
 
@@ -113,5 +125,8 @@ target_include_directories(mclapp SYSTEM PUBLIC ${MCLAPP_INCLUDE_DIRS})
 if (MCL_BUILD_EXAMPLES)
     add_executable(scaf ${CMAKE_CURRENT_SOURCE_DIR}/examples/scaf.cpp)
     target_link_libraries(scaf mclapp)
+    
+    add_executable(mesh ${CMAKE_CURRENT_SOURCE_DIR}/examples/mesh.cpp)
+    target_link_libraries(mesh mclapp)
 endif()
 

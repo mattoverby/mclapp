@@ -8,13 +8,11 @@
 #include "Logger.hpp"
 #include "MCL/AssertHandler.hpp"
 
-//#define MCL_USE_IMGUI
-
 #include <igl/per_face_normals.h>
 #include <igl/per_corner_normals.h>
 #include <igl/png/readPNG.h>
 #include <igl/opengl/glfw/Viewer.h>
-#ifdef MCL_USE_IMGUI
+#ifdef MCL_APP_USE_IMGUI
     #include <igl/opengl/glfw/imgui/ImGuiMenu.h>
     #include <igl/opengl/glfw/imgui/ImGuiHelpers.h>
     #include <igl/opengl/glfw/imgui/ImGuiTraits.h>
@@ -44,11 +42,13 @@ struct RuntimeOptions
 	std::vector<std::string> matcap_labels;
 	std::vector<Texture> matcaps;
 	Texture ref_tex;
-#ifdef MCL_USE_IMGUI
+#ifdef MCL_APP_USE_IMGUI
 	igl::opengl::glfw::imgui::ImGuiMenu gui;
+	int gui_plugin_idx;
 #endif
 	mcl::Screenshot screenshotter;
 	mcl::Application *app_ptr;
+	igl::opengl::glfw::Viewer *viewer_ptr;
 	Interface::RowMatrixXd X;
 	void init_runtime();
 	RuntimeOptions() :
@@ -56,7 +56,9 @@ struct RuntimeOptions
 		solved_last_frame(false),
 		screenshot_each_frame(false),
 		matcap_index(0),
-		app_ptr(nullptr)
+		gui_plugin_idx(-1),
+		app_ptr(nullptr),
+		viewer_ptr(nullptr)
 		{ init_runtime(); }
 };
 static RuntimeOptions runtime;
@@ -87,13 +89,18 @@ void Application::init(igl::opengl::glfw::Viewer *viewer_)
 	runtime = RuntimeOptions();
 	runtime.app_ptr = this;
 	viewer = viewer_;
+	runtime.viewer_ptr = viewer;
 
 	// Use app runtime variables to deal with solve/animate etc.
 	viewer->core().is_animating = true;
 
-#ifdef MCL_USE_IMGUI
+#ifdef MCL_APP_USE_IMGUI
 	runtime.gui.callback_draw_viewer_menu = &callback_draw_viewer_menu;
-	viewer->plugins.push_back(&runtime.gui);
+	if (options.show_gui)
+	{
+    	runtime.gui_plugin_idx = viewer->plugins.size();
+	    viewer->plugins.push_back(&runtime.gui);
+	}
 #endif
 
 	const MeshData &meshdata = MeshData::get();
@@ -160,6 +167,34 @@ bool Application::post_draw()
 	return false;
 }
 
+static inline void toggle_gui()
+{
+    if (!runtime.app_ptr || !runtime.viewer_ptr)
+        return;
+
+    runtime.app_ptr->options.show_gui = !runtime.app_ptr->options.show_gui;
+    if (runtime.app_ptr->options.show_gui)
+    {
+        mclAssert(runtime.gui_plugin_idx == -1);
+        runtime.gui_plugin_idx = runtime.viewer_ptr->plugins.size();
+	    runtime.viewer_ptr->plugins.push_back(&runtime.gui);    
+    }
+    else
+    {
+        int pidx = runtime.gui_plugin_idx;
+        mclAssert(pidx >= 0 && pidx < (int)runtime.viewer_ptr->plugins.size());
+        runtime.viewer_ptr->plugins.erase(runtime.viewer_ptr->plugins.begin()+pidx);
+        runtime.gui_plugin_idx = -1;
+    }
+}
+
+static inline void cycle_matcap()
+{
+    runtime.matcap_index = (runtime.matcap_index + 1) % runtime.matcap_labels.size();
+    //std::cout << "Loading matcap: " << runtime.matcap_index << "/" << runtime.matcaps.size() << std::flush;
+    //std::cout << ": " << runtime.matcap_labels[runtime.matcap_index] << std::endl;
+}
+
 bool Application::key_pressed(unsigned int key_, int mod)
 {
 	(void)(mod);
@@ -175,6 +210,10 @@ bool Application::key_pressed(unsigned int key_, int mod)
 		ss << "\n\t h: help";
 		ss << "\n\t space: toggle animate";
 		ss << "\n\t p: solve frame";
+    	ss << "\n\t m: cycle matcap";
+#ifdef MCL_APP_USE_IMGUI
+        ss << "\n\t g: toggle gui";
+#endif
 		printf("%s\n", ss.str().c_str());
 	};
 
@@ -183,6 +222,8 @@ bool Application::key_pressed(unsigned int key_, int mod)
 		case 'h' : { print_help(); } break;
 		case 'p' : { runtime.solve_next_frame = true; } break;
 		case ' ' : { options.animate = !options.animate; } break;
+        case 'g' : { toggle_gui(); } break;
+        case 'm' : { cycle_matcap(); needs_redraw = true; } break;
 	}
 
 	if (needs_redraw)
@@ -210,7 +251,6 @@ void Application::redraw(const RowMatrixXd &X)
 	viewer->core().orthographic = false;
 	viewer->data().line_color = Vector4f(0.2,0.2,0.2,0.2);
 	viewer->data().double_sided = true;
-	viewer->data().show_lines = true;
 
 	if (has_x)
 	{
@@ -227,6 +267,17 @@ void Application::redraw(const RowMatrixXd &X)
 		viewer->data().set_mesh(V, F);
 		viewer->data().set_colors(C);
 		viewer->data().set_normals(N);
+		
+	    // Set texture from matcap if desired
+        if (runtime.matcap_index > 0)
+        {
+            const Texture& tex = runtime.matcaps[runtime.matcap_index-1];
+            //Texture::MatType texA = (tex.A.cast<float>() * mesh_opacity).cast<unsigned char>();
+        	viewer->data().show_texture = true;
+            viewer->data().use_matcap = true;
+            viewer->core().lighting_factor = 0.9;
+        	viewer->data().set_texture(tex.R, tex.G, tex.B, tex.A);
+        }
 	}
     else
     {
@@ -282,16 +333,13 @@ void Application::append_mesh(const RowMatrixXd &X,
 			C.block(F_offset[i],0,nf,3).col(1).array() = runtime.mesh_colors[c_idx][1];
 			C.block(F_offset[i],0,nf,3).col(2).array() = runtime.mesh_colors[c_idx][2];
 		}
-	
-	    // TODO: deal with normals from RenderCache
+
 	    RenderCache &cache = RenderCache::get();
 	    cache.append_triangles(V, F, C);
-		
 	    igl::per_face_normals(V, F, N);
 	}
 	else
 	{
-		igl::per_corner_normals(V, F, 50, N);
 		C = RowMatrixXd::Zero(X.rows(), 3);
 		const VectorXi &V_offset = meshdata.get_vertex_offsets();
 		for (int i=0; i<n_meshes; ++i)
@@ -302,9 +350,15 @@ void Application::append_mesh(const RowMatrixXd &X,
 			C.block(V_offset[i],0,nv,3).col(1).array() = runtime.mesh_colors[c_idx][1];
 			C.block(V_offset[i],0,nv,3).col(2).array() = runtime.mesh_colors[c_idx][2];
 		}
+
+	    RenderCache &cache = RenderCache::get();
+	    cache.append_triangles(V, F, C);
+    	igl::per_corner_normals(V, F, 50, N);
 	}
 
+          
 	// If texture param and rendering parameterized mesh, set texture
+	// This overwrites mapcap if selected
 	if (meshdata.is_texture_param() && !options.render_UV)
 	{
 		double mesh_measure = meshdata.get_mesh_measures().sum();
@@ -312,7 +366,7 @@ void Application::append_mesh(const RowMatrixXd &X,
 
 		V = meshdata.get_rest();
 		viewer->data().show_texture = true;
-		viewer->data().show_lines = false;
+//		viewer->data().show_lines = false;
 		viewer->data().set_uv(X * scale, F); // scale tex for visibility
 		viewer->data().V_material_diffuse = MatrixXd::Ones(V.rows(), 3);
 
@@ -367,10 +421,10 @@ void RuntimeOptions::init_runtime()
 
 static inline void callback_draw_viewer_menu()
 {
-#ifdef MCL_USE_IMGUI
+#ifdef MCL_APP_USE_IMGUI
 	const MeshData &meshdata = MeshData::get();
 	const int dim = meshdata.dim();
-	if (!runtime.app_ptr)
+	if (!runtime.app_ptr || !runtime.viewer_ptr)
 		return;
 
 	bool needs_render_update = false;
@@ -379,15 +433,13 @@ static inline void callback_draw_viewer_menu()
 	// Scene info
 	{
 		std::stringstream header_text;
-		//header_text << "Testcase: " << settings.testcase.c_str();
+		header_text << runtime.app_ptr->options.name.c_str();
 		header_text << "\n\t#verts: " << meshdata.get_rest().rows();
-		header_text << "\n\t#bnd elems: " << meshdata.get_facets().rows();
 		header_text << "\n\t#elems: " << meshdata.get_elements().rows();
-		//header_text << "\nSolver iter: " << state.iteration;
+    	header_text << "\n\t#bnd elems: " << meshdata.get_facets().rows();
 		ImGui::TextUnformatted(header_text.str().c_str());
 	}
 
-//	if (ImGui::Button("export current mesh")) { app_ptr->export_current_mesh(); }
 	if (ImGui::Button("screenshot"))
 	{
 		std::string png_out = "screenshot_" +
@@ -398,46 +450,23 @@ static inline void callback_draw_viewer_menu()
 	}
 	if (ImGui::Checkbox("screenshot background", &runtime.screenshotter.render_background)){}
 	if (ImGui::Checkbox("screenshot each frame", &runtime.screenshot_each_frame)){}
-	if (ImGui::Button("Snap to rendered"))
+	if (ImGui::CollapsingHeader("solver", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		runtime.align_next_update = true;
-		needs_render_update = true;
+        if (ImGui::Button("solve frame")) { runtime.solve_next_frame=true; }
+		ImGui::Checkbox("animate (space)", &runtime.app_ptr->options.animate);		
 	}
-	ImGui::Checkbox("animate (a)", &runtime.app_ptr->get_viewer().core().is_animating);
-/*
-	if (ImGui::CollapsingHeader("Render Settings", ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::CollapsingHeader("rending", ImGuiTreeNodeFlags_DefaultOpen))
 	{
-		{ // Render state
-			const char* x_items[] = {"x", "rest", "initializer", "x prev", "x admm", "x polish", "x tmp", "x overlay"};
-            if (ImGui::Combo("render state (x)", &iface.render_state, x_items, NUM_RENDER_X)) { needs_render_update = true; }
-            if (ImGui::Combo("matcap (m)", &runtime.matcap_index, runtime.matcap_labels)) { needs_render_update = true; }
-			if (ImGui::Checkbox("show normals", &runtime.show_normals)){ needs_render_update=true; }
-			if (ImGui::Checkbox("show lines", &runtime.show_lines)){ needs_render_update=true; }
-			if (ImGui::Checkbox("face based", &runtime.face_based)) { needs_render_update=true; }
-			if (ImGui::Checkbox("hide surface", &runtime.hide_surface)) { needs_render_update = true; }
-			if (ImGui::Checkbox("subdivide render", &runtime.subdiv_render)) { needs_render_update = true; }
-			if (ImGui::Checkbox("render param", &settings.interface.render_param)) { needs_render_update = true; }
-		}
-		{ // Constraints
-			ImGui::Separator();
-			ImGui::TextUnformatted("Constraints");
-			if (ImGui::Checkbox("show pins", &iface.show_pins)){ needs_render_update=true; }
-			if (ImGui::Checkbox("show boundary", &iface.show_boundary)){ needs_render_update=true; }
-			if (ImGui::Checkbox("show inversions", &iface.show_inversions)){ needs_render_update=true; }
-			if (ImGui::Checkbox("show EE constraints", &iface.show_ee_constraints)){ needs_render_update=true; }
-			if (ImGui::Checkbox("show VF constraints", &iface.show_vf_constraints)){ needs_render_update=true; }
-			if (ImGui::Checkbox("show INV constraints", &iface.show_inversion_constraints)){ needs_render_update=true; }
-			if (dim==3 && ImGui::Checkbox("show intersected only", &runtime.render_colliding_only)){ needs_render_update=true; }
-		}
-	} // end render settings
-
-	if (ImGui::CollapsingHeader("Solver Settings", ImGuiTreeNodeFlags_DefaultOpen))
-	{
-		//if(ImGui::Button("reset")) { app_ptr->reset_solver(); }
-		if(ImGui::Checkbox("skip wrong side collision", &settings.check_wrong_side_collision)){}
-		if(ImGui::Checkbox("constraint filtering", &settings.filter_constraints)){}
-	} // end solver settings
-*/
+	    bool show_lines = runtime.viewer_ptr->data().show_lines;
+        if (ImGui::Checkbox("show lines (l)", &show_lines))
+        {
+            runtime.viewer_ptr->data().show_lines = show_lines;
+            needs_render_update = true;
+        }
+        if (ImGui::Checkbox("flat shading", &runtime.app_ptr->options.flat_shading)) { needs_render_update = true; }
+        if (ImGui::Checkbox("render UV", &runtime.app_ptr->options.render_UV)){ needs_render_update = true; }
+        if (ImGui::Combo("matcap (m)", &runtime.matcap_index, runtime.matcap_labels)) { needs_render_update = true; }
+    }
 	if (needs_render_update) { runtime.app_ptr->redraw(runtime.X); }
 #endif
 } // end imgui menu

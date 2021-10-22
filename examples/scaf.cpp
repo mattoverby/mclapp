@@ -24,8 +24,9 @@ public:
 	RowMatrixXd X;
 	void init();
 	void step();
-	void draw_scaf();
 };
+
+void draw_scaf(Optimizer *optimizer);
 
 int main(int argc, char *argv[])
 {
@@ -45,13 +46,16 @@ int main(int argc, char *argv[])
 
 	Optimizer solver;
 	solver.init();
+	draw_scaf(&solver);
 
 	// Create app that directly interfaces with MeshData
 	Application app;
 	app.options.render_UV = true;
+	app.options.name = "camel";
 	app.solve_frame = [&](RowMatrixXd &X)
 	{
 		solver.step();
+		if (app.options.render_UV) { draw_scaf(&solver); }
 		X = solver.X;
 	};
     app.start();
@@ -60,7 +64,7 @@ int main(int argc, char *argv[])
 
 	// Export per-iteration timings/counters to csv
 	Logger &log = Logger::get();
-	log.write_all("camel"); // output/camel/camel_log.csv
+	log.write_all(app.options.name); // output/camel/camel_log.csv
 
 	return EXIT_SUCCESS;
 }
@@ -88,8 +92,6 @@ void Optimizer::init()
 		scaf_data,
 		igl::MappingEnergyType::SYMMETRIC_DIRICHLET,
 		b, bc, 0);
-
-	draw_scaf();
 }
 
 void Optimizer::step()
@@ -109,20 +111,18 @@ void Optimizer::step()
 	// frames is reported when log.write_... is called.
     mclSetCounter("example_counter", X.size());
     mclSetValue("example_value", X.norm());
-    
-    draw_scaf();
 }
 
-void Optimizer::draw_scaf()
+void draw_scaf(Optimizer *optimizer)
 {
     // RenderCache is a singleton that's used for
     // visual debugging. Any data added to RenderCache
     // will be drawn on the next frame and cleared.
     // It not efficient.
     RenderCache &cache = RenderCache::get();
-    int nsv = scaf_data.w_uv.rows() - X.rows();
-    MatrixXd V_scaf = scaf_data.w_uv.bottomRows(nsv);
-    MatrixXd C_scaf = MatrixXd::Ones(scaf_data.s_T.rows(), 3);
+    int nsv = optimizer->scaf_data.w_uv.rows() - optimizer->X.rows();
+    MatrixXd V_scaf = optimizer->scaf_data.w_uv.bottomRows(nsv);
+    MatrixXd C_scaf = MatrixXd::Ones(optimizer->scaf_data.s_T.rows(), 3);
     C_scaf *= 0.7; // gray
-    cache.add_triangles(V_scaf, scaf_data.s_T, C_scaf);
+    cache.add_triangles(V_scaf, optimizer->scaf_data.s_T, C_scaf);
 }
