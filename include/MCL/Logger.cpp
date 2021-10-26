@@ -74,7 +74,7 @@ void Logger::set_int_counter(int iter, const std::string &l, const int &v)
 {
     const std::lock_guard<std::mutex> lock(log_mutex);
 	if (print_timer_start) {
-		printf("%s: %d\n", l.c_str(), v);
+		printf("Setting %s: %d\n", l.c_str(), v);
 	}
 	PerFrameData &data = get_frame_data(iter);
 	data.get_int_counter(l) = v;
@@ -107,7 +107,7 @@ void Logger::set_double_counter(int iter, const std::string &l, const double &v)
 {
     const std::lock_guard<std::mutex> lock(log_mutex);
 	if (print_timer_start) {
-		printf("%s: %f\n", l.c_str(), v);
+		printf("Setting %s: %f\n", l.c_str(), v);
 	}
 	PerFrameData &data = get_frame_data(iter);
 	data.get_double_counter(l) = v;
