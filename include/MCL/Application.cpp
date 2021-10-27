@@ -264,10 +264,10 @@ void Application::redraw(const RowMatrixXd &X)
 		append_mesh(X, V, F, C, N);
 
 		mclAssert(V.cols() == 3);
-		viewer->data().set_face_based(C.rows()==F.rows());
+		viewer->data().set_face_based(true);
 		viewer->data().set_mesh(V, F);
-		viewer->data().set_colors(C);
-		viewer->data().set_normals(N);
+		if (C.rows()>0) { viewer->data().set_colors(C); }
+		if (N.rows()>0) { viewer->data().set_normals(N); }
 		
 	    // Set texture from matcap if desired
         if (runtime.matcap_index > 0)
@@ -279,6 +279,22 @@ void Application::redraw(const RowMatrixXd &X)
             viewer->core().lighting_factor = 0.9;
         	viewer->data().set_texture(tex.R, tex.G, tex.B, tex.A);
         }
+        else if (meshdata.is_texture_param() && !options.render_UV)
+	    {
+		    double mesh_measure = meshdata.get_mesh_measures().sum();
+		    double scale = 1000 / mesh_measure;
+		    viewer->data().show_texture = true;
+		    viewer->core().lighting_factor = 0.9;
+		    viewer->data().V_material_diffuse = MatrixXd::Ones(V.rows(), 3);
+		    viewer->data().set_uv(X*scale, F); // scale tex for visibility
+		    if (runtime.ref_tex.R.rows())
+		    {
+			    viewer->data().set_face_based(false);
+			    viewer->data().set_texture(
+				    runtime.ref_tex.R, runtime.ref_tex.G,
+				    runtime.ref_tex.B, runtime.ref_tex.A);
+		    }
+	    }
 	}
     else
     {
@@ -310,21 +326,27 @@ void Application::append_mesh(const RowMatrixXd &X,
 {
 	const MeshData &meshdata = MeshData::get();
 	F = meshdata.get_faces();
-
 	V = X;
-	if (X.cols() == 2)
+	bool compute_colors = true;
+	
+	if (meshdata.is_texture_param() && !options.render_UV)
+	{
+	    compute_colors = false;
+		V = meshdata.get_rest();
+		//C = RowMatrixXd::Ones(F.rows(), 3)*0.7;
+	}
+	else if (X.cols() == 2)
 	{
 		V = RowMatrixXd::Zero(X.rows(), 3);
 		V.leftCols(2) = X;
 	}
 
-	int n_meshes = meshdata.num_meshes();
-	bool force_flat_shading = meshdata.is_texture_param() && options.render_UV;
-
-	// Compute normals and colors
-	if (options.flat_shading || force_flat_shading)
-	{
-		C = RowMatrixXd::Zero(F.rows(), 3);
+    // Flat shading is determined by the normals
+    // Use per_corner_normals for smooth shading.
+    if (compute_colors)
+    {
+    	int n_meshes = meshdata.num_meshes();
+    	C = RowMatrixXd::Zero(F.rows(), 3);
 		const VectorXi &F_offset = meshdata.get_face_offsets();
 		for (int i=0; i<n_meshes; ++i)
 		{
@@ -337,48 +359,16 @@ void Application::append_mesh(const RowMatrixXd &X,
 
 	    RenderCache &cache = RenderCache::get();
 	    cache.append_triangles(V, F, C);
-	    igl::per_face_normals(V, F, N);
-	}
-	else
+    }
+
+    // Use flat shading if rendering 2D
+	if (meshdata.is_texture_param())
 	{
-		C = RowMatrixXd::Zero(X.rows(), 3);
-		const VectorXi &V_offset = meshdata.get_vertex_offsets();
-		for (int i=0; i<n_meshes; ++i)
-		{
-			int nv = V_offset[i+1] - V_offset[i];
-			int c_idx = (options.start_mesh_color + i) % int(runtime.mesh_colors.size());
-			C.block(V_offset[i],0,nv,3).col(0).array() = runtime.mesh_colors[c_idx][0];
-			C.block(V_offset[i],0,nv,3).col(1).array() = runtime.mesh_colors[c_idx][1];
-			C.block(V_offset[i],0,nv,3).col(2).array() = runtime.mesh_colors[c_idx][2];
-		}
-
-	    RenderCache &cache = RenderCache::get();
-	    cache.append_triangles(V, F, C);
-    	igl::per_corner_normals(V, F, 50, N);
+	    if (options.flat_shading || options.render_UV) { igl::per_face_normals(V, F, N); } // 2D
+	    else { igl::per_corner_normals(V, F, 50, N); } // TODO deal with seams
 	}
-
-          
-	// If texture param and rendering parameterized mesh, set texture
-	// This overwrites mapcap if selected
-	if (meshdata.is_texture_param() && !options.render_UV)
-	{
-		double mesh_measure = meshdata.get_mesh_measures().sum();
-		double scale = 1000 / mesh_measure;
-
-		V = meshdata.get_rest();
-		viewer->data().show_texture = true;
-//		viewer->data().show_lines = false;
-		viewer->data().set_uv(X * scale, F); // scale tex for visibility
-		viewer->data().V_material_diffuse = MatrixXd::Ones(V.rows(), 3);
-
-		if (runtime.ref_tex.R.rows())
-		{
-			viewer->data().set_face_based(false);
-			viewer->data().set_texture(
-				runtime.ref_tex.R, runtime.ref_tex.G,
-				runtime.ref_tex.B, runtime.ref_tex.A);
-		}
-	}
+	else if (options.flat_shading) { igl::per_face_normals(V, F, N); }
+	else { igl::per_corner_normals(V, F, 50, N); }
 
 } // end append mesh
 
@@ -413,10 +403,10 @@ void RuntimeOptions::init_runtime()
 
 	// Load reference texture
 	std::string fn = MCL_APP_ROOT_DIR "/data/texture_bb.png";
-	if (!igl::png::readPNG(fn, runtime.ref_tex.R, runtime.ref_tex.G, runtime.ref_tex.B, runtime.ref_tex.A))
+	if (!igl::png::readPNG(fn, ref_tex.R, ref_tex.G, ref_tex.B, ref_tex.A))
 	{
 		std::cerr << "Failed to load " << fn << std::endl;
-		runtime.ref_tex.clear();
+		ref_tex.clear();
 	}
 }
 
