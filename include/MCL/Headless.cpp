@@ -3,6 +3,7 @@
 
 #include "Headless.hpp"
 #include "MeshData.hpp"
+#include "RenderCache.hpp"
 
 #include "MCL/AssertHandler.hpp"
 #include "MCL/Logger.hpp"
@@ -68,6 +69,10 @@ void Headless::start()
 
         if (options.export_frame_obj)    
             save_frame_obj(prefix, log.curr_frame, x);
+
+		// Clear render cache so it doesn't grow, even
+		// though we aren't rendering anything.
+		RenderCache::get().clear();
 
 		if (options.quit_next_frame || !canary_is_alive(canary_file))
 			break;

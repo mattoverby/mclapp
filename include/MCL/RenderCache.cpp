@@ -62,14 +62,15 @@ void RenderCache::add_triangles(
         return;
     
     int prev_v = tri_V.rows();
-    int v_cols = std::min(3, (int)V.cols());
     tri_V.conservativeResize(prev_v+V.rows(), 3);
-    tri_V.block(prev_v,0,V.rows(),v_cols) = V;
-    if (v_cols == 2) { tri_V.block(prev_v,2,V.rows(),1).setZero(); }
+    tri_V.bottomRows(V.rows()).setZero();
+    if (V.cols()==3) { tri_V.bottomRows(V.rows()) = V; }
+    else { tri_V.block(prev_v,0,V.rows(),V.cols()) = V; }
     
     int prev_f = tri_F.rows();
     tri_F.conservativeResize(prev_f+F.rows(), 3);
-    tri_F.block(prev_f,0,F.rows(),3) = F;
+    tri_F.bottomRows(F.rows()) = F;
+    tri_F.bottomRows(F.rows()).array() += prev_v;
 
     MatrixXd C_tmp;
     const MatrixXd *C = nullptr;
@@ -94,7 +95,7 @@ void RenderCache::add_triangles(
     
     int prev_c = tri_C.rows();
     tri_C.conservativeResize(prev_c+C->rows(),3);
-    tri_C.block(prev_c,0,C->rows(),3) = *C;
+    tri_C.bottomRows(C->rows()) = *C;
 }
 
 // Add points to bottom of matrix
@@ -146,7 +147,8 @@ void RenderCache::append_triangles(RowMatrixXd &V, RowMatrixXi &F, RowMatrixXd &
     
     int prev_f = F.rows();
     F.conservativeResize(prev_f+tri_F.rows(), 3);
-    F.block(prev_f,0,tri_F.rows(),3) = tri_F;
+    F.bottomRows(tri_F.rows()) = tri_F;
+    F.bottomRows(tri_F.rows()).array() += prev_v;
     
     if (C.rows()==0)
     {

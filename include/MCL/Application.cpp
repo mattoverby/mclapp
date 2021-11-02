@@ -414,12 +414,10 @@ static inline void callback_draw_viewer_menu()
 {
 #ifdef MCL_APP_USE_IMGUI
 	const MeshData &meshdata = MeshData::get();
-	const int dim = meshdata.dim();
 	if (!runtime.app_ptr || !runtime.viewer_ptr)
 		return;
 
 	bool needs_render_update = false;
-	Interface::RowMatrixXd &X = runtime.X;
 
 	// Scene info
 	{
