@@ -111,11 +111,14 @@ endif()
 set(MCLAPP_LIBRARIES
 	igl::core
 	igl::png
-	igl::triangle
 	igl::opengl_glfw
     ${IMGUI_LIB}
 	${TBB_LIBRARIES}
 	stdc++fs)
+
+if (LIBIGL_WITH_TRIANGLE)
+	set(MCLAPP_LIBRARIES igl::triangle ${MCLAPP_LIBRARIES})
+endif()
 
 add_library(mclapp ${MCLAPP_SRC})
 target_link_libraries(mclapp PUBLIC ${MCLAPP_LIBRARIES})
