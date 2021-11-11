@@ -70,7 +70,7 @@ option(LIBIGL_WITH_OPENGL_GLFW       "Use GLFW"                     ON)
 set(LIBIGL_WITH_OPENGL_GLFW_IMGUI                                   MCL_USE_IMGUI)
 option(LIBIGL_WITH_PNG               "Use PNG"                      ON)
 option(LIBIGL_WITH_TETGEN            "Use Tetgen"                   OFF)
-option(LIBIGL_WITH_TRIANGLE          "Use Triangle"                 ON)
+option(LIBIGL_WITH_TRIANGLE          "Use Triangle"                 OFF)
 download_project(PROJ libigl
 	GIT_REPOSITORY https://github.com/libigl/libigl.git
 	GIT_TAG main
