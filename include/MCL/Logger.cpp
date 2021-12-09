@@ -373,7 +373,11 @@ std::string Logger::print_counters()
 
 std::string Logger::make_write_prefix(std::string test)
 {
-	return Logger::get_output_dir()+test+'/'+test+'_';
+	// Make directories as needed
+	std::string dir_prefix = Logger::get_output_dir()+test+'/';
+	std::experimental::filesystem::path p(dir_prefix);
+	std::experimental::filesystem::create_directories(p.parent_path());
+	return dir_prefix+test+'_';
 }
 
 void Logger::write_csv(std::string prefix)

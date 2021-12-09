@@ -124,6 +124,7 @@ public:
 	std::string print_counters();
 
 	// Writes timings/counters/etc to file
+	// make_write_prefix creates directory if it doesn't exist
 	static std::string make_write_prefix(std::string test);
 	void write_csv(std::string prefix); // per-frame data
 	void write_timings(std::string prefix); // summary
