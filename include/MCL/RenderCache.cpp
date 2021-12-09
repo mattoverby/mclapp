@@ -2,7 +2,9 @@
 // Distributed under the MIT License.
 
 #include "RenderCache.hpp"
+#include "MCL/AssertHandler.hpp"
 #include <mutex>
+#include <iostream>
 
 namespace mcl
 {
@@ -60,7 +62,7 @@ void RenderCache::add_triangles(
     using namespace Eigen;
     if (V.rows()==0 || F.cols()!=3 || V.cols() > 3 || V.cols() < 2)
         return;
-    
+
     int prev_v = tri_V.rows();
     tri_V.conservativeResize(prev_v+V.rows(), 3);
     tri_V.bottomRows(V.rows()).setZero();
@@ -142,8 +144,9 @@ void RenderCache::append_triangles(RowMatrixXd &V, RowMatrixXi &F, RowMatrixXd &
 
     int prev_v = V.rows();
     int v_cols = std::min(3, (int)V.cols());
+    mclAssert(tri_V.cols() >= v_cols);
     V.conservativeResize(prev_v+tri_V.rows(), v_cols);
-    V.block(prev_v,0,tri_V.rows(),v_cols) = tri_V;
+    V.bottomRows(tri_V.rows()) = tri_V.leftCols(v_cols);
     
     int prev_f = F.rows();
     F.conservativeResize(prev_f+tri_F.rows(), 3);
@@ -178,10 +181,11 @@ void RenderCache::append_triangles(RowMatrixXd &V, RowMatrixXi &F, RowMatrixXd &
         }
     }
     else
-    {
+    {   
         int prev_c = C.rows();
         C.conservativeResize(prev_c+tri_C.rows(), 3);
-        C.block(prev_c,0,tri_C.rows(),3) = tri_C;
+        mclAssert(tri_C.cols()==3);
+        C.bottomRows(tri_C.rows()) = tri_C;
     }
 }
 

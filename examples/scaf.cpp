@@ -120,9 +120,7 @@ void draw_scaf(Optimizer *optimizer)
     // will be drawn on the next frame and cleared.
     // It not efficient.
     RenderCache &cache = RenderCache::get();
-    int nsv = optimizer->scaf_data.w_uv.rows() - optimizer->X.rows();
-    MatrixXd V_scaf = optimizer->scaf_data.w_uv.bottomRows(nsv);
     MatrixXd C_scaf = MatrixXd::Ones(optimizer->scaf_data.s_T.rows(), 3);
     C_scaf *= 0.7; // gray
-    cache.add_triangles(V_scaf, optimizer->scaf_data.s_T, C_scaf);
+    cache.add_triangles(optimizer->scaf_data.w_uv, optimizer->scaf_data.s_T, C_scaf);
 }
