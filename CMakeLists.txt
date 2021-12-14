@@ -1,6 +1,6 @@
 # Copyright Matt Overby 2021.
 # Distributed under the MIT License.
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.11)
 
 project(mclapp_project LANGUAGES CXX)
 
