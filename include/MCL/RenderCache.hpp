@@ -41,6 +41,12 @@ public:
         const Eigen::MatrixXi &F,  // cols = 3
         const Eigen::MatrixXd &C); // cols = 3
 
+	void add_sphere(
+		const Eigen::Vector3d &center,
+		double radius,
+		int subdiv=1,
+        const Eigen::Vector3d &c=Eigen::Vector3d(1,0,0));
+
     // Used by mcl::Application for rendering with for libigl
     void append_points(Eigen::MatrixXd &P, Eigen::MatrixXd &C);
     void append_lines(Eigen::MatrixXd &E0, Eigen::MatrixXd &E1, Eigen::MatrixXd &C);

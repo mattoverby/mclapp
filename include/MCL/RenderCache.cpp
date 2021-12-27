@@ -5,6 +5,7 @@
 #include "MCL/AssertHandler.hpp"
 #include <mutex>
 #include <iostream>
+#include <map>
 
 namespace mcl
 {
@@ -98,6 +99,143 @@ void RenderCache::add_triangles(
     int prev_c = tri_C.rows();
     tri_C.conservativeResize(prev_c+C->rows(),3);
     tri_C.bottomRows(C->rows()) = *C;
+}
+
+// From https://github.com/caosdoar/spheres/blob/
+// d16e148ca7d8346887da8f42dc2382a6e2c863c3/src/spheres.cpp
+// License: MIT
+class UnitSphereMesh
+{
+protected:
+    struct Edge
+    {
+        uint32_t v0, v1;
+        Edge(uint32_t v0, uint32_t v1) : v0(v0 < v1 ? v0 : v1), v1(v0 < v1 ? v1 : v0) {}
+        inline bool operator <(const Edge &rhs) const
+        {
+            return v0 < rhs.v0 || (v0 == rhs.v0 && v1 < rhs.v1);
+        }
+    };
+    static inline uint32_t subdivide_edge(uint32_t f0, uint32_t f1,
+        const Eigen::Vector3d &v0, const Eigen::Vector3d &v1,
+        UnitSphereMesh *io_mesh, std::map<Edge, uint32_t> &io_divisions)
+    {
+        const Edge edge(f0, f1);
+        auto it = io_divisions.find(edge);
+        if (it != io_divisions.end()) { return it->second; }
+        Eigen::Vector3d v = ((v0+v1)*0.5).normalized();
+        const uint32_t f = io_mesh->vertices.size();
+        io_mesh->vertices.emplace_back(v);
+        io_divisions.emplace(edge, f);
+        return f;
+    }
+public:
+    std::vector<Eigen::Vector3d> vertices;
+    std::vector<Eigen::Vector3i> faces;
+    void make_icosahedron()
+    {
+        using namespace Eigen;
+        const double t = (1.0 + std::sqrt(5.0)) / 2.0;
+        vertices.clear();
+        faces.clear();
+        vertices.emplace_back(Vector3d(-1.0,  t, 0.0).normalized());
+        vertices.emplace_back(Vector3d( 1.0,  t, 0.0).normalized());
+        vertices.emplace_back(Vector3d(-1.0, -t, 0.0).normalized());
+        vertices.emplace_back(Vector3d( 1.0, -t, 0.0).normalized());
+        vertices.emplace_back(Vector3d(0.0, -1.0,  t).normalized());
+        vertices.emplace_back(Vector3d(0.0,  1.0,  t).normalized());
+        vertices.emplace_back(Vector3d(0.0, -1.0, -t).normalized());
+        vertices.emplace_back(Vector3d(0.0,  1.0, -t).normalized());
+        vertices.emplace_back(Vector3d( t, 0.0, -1.0).normalized());
+        vertices.emplace_back(Vector3d( t, 0.0,  1.0).normalized());
+        vertices.emplace_back(Vector3d(-t, 0.0, -1.0).normalized());
+        vertices.emplace_back(Vector3d(-t, 0.0,  1.0).normalized());
+        faces.emplace_back(0, 11, 5);
+        faces.emplace_back(0, 5, 1);
+        faces.emplace_back(0, 1, 7);
+        faces.emplace_back(0, 7, 10);
+        faces.emplace_back(0, 10, 11);
+        faces.emplace_back(1, 5, 9);
+        faces.emplace_back(5, 11, 4);
+        faces.emplace_back(11, 10, 2);
+        faces.emplace_back(10, 7, 6);
+        faces.emplace_back(7, 1, 8);
+        faces.emplace_back(3, 9, 4);
+        faces.emplace_back(3, 4, 2);
+        faces.emplace_back(3, 2, 6);
+        faces.emplace_back(3, 6, 8);
+        faces.emplace_back(3, 8, 9);
+        faces.emplace_back(4, 9, 5);
+        faces.emplace_back(2, 4, 11);
+        faces.emplace_back(6, 2, 10);
+        faces.emplace_back(8, 6, 7);
+        faces.emplace_back(9, 8, 1);
+    }
+    void subdivide()
+    {
+        mclAssert(vertices.size()>0);
+        mclAssert(faces.size()>0);
+        using namespace Eigen;
+        std::vector<Vector3d> prevV = vertices;
+        std::vector<Vector3i> prevF = faces;
+        int nf = prevF.size();
+
+        //meshOut.vertices = meshIn.vertices;
+        faces.clear();
+        std::map<Edge, uint32_t> divisions; // Edge -> new vertex
+        for (uint32_t i = 0; i < nf; ++i)
+        {
+            const uint32_t f0 = prevF[i][0];
+            const uint32_t f1 = prevF[i][1];
+            const uint32_t f2 = prevF[i][2];
+            const Vector3d v0 = prevV[f0];
+            const Vector3d v1 = prevV[f1];
+            const Vector3d v2 = prevV[f2];
+            const uint32_t f3 = subdivide_edge(f0, f1, v0, v1, this, divisions);
+            const uint32_t f4 = subdivide_edge(f1, f2, v1, v2, this, divisions);
+            const uint32_t f5 = subdivide_edge(f2, f0, v2, v0, this, divisions);
+            faces.emplace_back(f0, f3, f5);
+            faces.emplace_back(f3, f1, f4);
+            faces.emplace_back(f4, f2, f5);
+            faces.emplace_back(f3, f4, f5);
+        }
+    }
+};
+
+void RenderCache::add_sphere(
+	const Eigen::Vector3d &center,
+	double radius,
+	int subdiv,
+    const Eigen::Vector3d &c)
+{
+    using namespace Eigen;
+    UnitSphereMesh mesh;
+    mesh.make_icosahedron();
+
+    for (int i=0; i<subdiv; ++i)
+        mesh.subdivide();
+
+    // Copy to Eigen matrices
+    int nv = mesh.vertices.size();
+    Eigen::MatrixXd V(nv, 3);
+    for (int i=0; i<nv; ++i)
+    {
+        mesh.vertices[i] *= radius;
+        mesh.vertices[i] += center;
+        V.row(i) = mesh.vertices[i];
+    }
+
+    int nf = mesh.faces.size();
+    Eigen::MatrixXi F(nf, 3);
+    Eigen::MatrixXd C(nf, 3);
+    for (int i=0; i<nf; ++i)
+    {
+        F.row(i) = mesh.faces[i];
+        C.row(i) = c;
+    }
+
+    // Let add_triangles to do the rest
+    add_triangles(V,F,C);
 }
 
 // Add points to bottom of matrix

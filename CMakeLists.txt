@@ -96,5 +96,8 @@ if (MCL_BUILD_EXAMPLES)
     
     add_executable(mesh ${CMAKE_CURRENT_SOURCE_DIR}/examples/mesh.cpp)
     target_link_libraries(mesh mclapp)
+
+	add_executable(arap ${CMAKE_CURRENT_SOURCE_DIR}/examples/arap.cpp)
+    target_link_libraries(arap mclapp)
 endif()
 
