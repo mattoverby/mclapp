@@ -58,6 +58,7 @@ void MeshData::clear()
 	mP = RowMatrixXi();
 	mF = RowMatrixXi();
 	m_masses = Eigen::VectorXd();
+	m_rest_bmin_mbax = Eigen::VectorXd();
 
 	m_mesh_measures = Eigen::VectorXd();
 	m_V_offsets = Eigen::VectorXi();
@@ -93,6 +94,20 @@ void MeshData::initialize()
 		int np = m_P_offsets[i+1] - p_start;
 		m_mesh_measures[i] = m_measures.segment(p_start,np).sum();
 	}
+
+	// Bounding box of rest verts
+	int nv = mV.rows();
+	int vc = mV.cols();
+	Eigen::AlignedBox<double,3> box;
+	for (int i=0; i<nv; ++i)
+	{
+		Vector3d xi = Vector3d::Zero();
+		xi.head(vc) = mV.row(i).transpose();
+		box.extend(xi);
+	}
+	m_rest_bmin_mbax = Eigen::VectorXd::Zero(vc*2);
+	m_rest_bmin_mbax.head(vc) = box.min().head(vc);
+	m_rest_bmin_mbax.tail(vc) = box.max().head(vc);
 
 	// Needs initializer?
 	if (mVinit.rows() != mV.rows()) { mVinit = mV; }
@@ -423,6 +438,18 @@ void MeshData::compute_masses(double density_kgd)
 		}
 	}
 } // end compute masses
+
+double MeshData::get_rest_radius() const
+{
+	mclAssert(m_rest_bmin_mbax.rows()==4 || m_rest_bmin_mbax.rows()==6);
+	Vector3d bmin = Vector3d::Zero();
+	Vector3d bmax = Vector3d::Zero();
+	int nc = mV.cols();
+	bmin.head(nc) = m_rest_bmin_mbax.head(nc);
+	bmax.head(nc) = m_rest_bmin_mbax.tail(nc);
+	Vector3d c = 0.5 * (bmin + bmax);
+	return (bmax - c).norm();
+}
 
 void MeshData::compute_facets(const RowMatrixXi &P, RowMatrixXi &F)
 {
@@ -762,6 +789,7 @@ void MeshData::save(Archive& archive) const
 		mP,
 		mF,
 		m_masses,
+		m_rest_bmin_mbax,
 		m_V_offsets,
 		m_P_offsets,
 		m_F_offsets
@@ -784,6 +812,7 @@ void MeshData::load(Archive& archive)
 		mP,
 		mF,
 		m_masses,
+		m_rest_bmin_mbax,
 		m_V_offsets,
 		m_P_offsets,
 		m_F_offsets

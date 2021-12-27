@@ -104,6 +104,7 @@ public:
 	void compute_masses(double density_kg = -1);
 	void set_masses(const Eigen::VectorXd &m) { m_masses=m; }
 	const Eigen::VectorXd& get_masses() const { return m_masses; }
+	double get_rest_radius() const;
 
 	// Serialize
 	template<class Archive> void save(Archive& archive) const;
@@ -132,6 +133,7 @@ protected:
 	RowMatrixXi mP; // (internal) elements
 	RowMatrixXi mF; // facets
 	Eigen::VectorXd m_masses; // per-vertex masses
+	Eigen::VectorXd m_rest_bmin_mbax; // [bmin, bmax]
 
 	// Stacked (computed) quantities [dynamic, kinematic]
 	// Most are computed on initialize

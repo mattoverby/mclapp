@@ -38,6 +38,7 @@ struct RuntimeOptions
 	bool solved_last_frame;
 	bool screenshot_each_frame;
 	std::vector<Vector3d> mesh_colors; // default per-mesh colors
+	int scale_uv;
 	int matcap_index; // 0 = none
 	std::vector<std::string> matcap_labels;
 	std::vector<Texture> matcaps;
@@ -55,6 +56,7 @@ struct RuntimeOptions
 		solve_next_frame(false),
 		solved_last_frame(false),
 		screenshot_each_frame(false),
+		scale_uv(4),
 		matcap_index(0),
 		gui_plugin_idx(-1),
 		app_ptr(nullptr),
@@ -281,8 +283,8 @@ void Application::redraw(const RowMatrixXd &X)
         }
         else if (meshdata.is_texture_param() && !options.render_UV)
 	    {
-		    double mesh_measure = meshdata.get_mesh_measures().sum();
-		    double scale = 1000 / mesh_measure;
+			double rest_rad = meshdata.get_rest_radius();
+		    double scale = (1.0 / rest_rad) * double(runtime.scale_uv);
 		    viewer->data().show_texture = true;
 		    viewer->core().lighting_factor = 0.9;
 		    viewer->data().V_material_diffuse = MatrixXd::Ones(V.rows(), 3);
@@ -454,6 +456,7 @@ static inline void callback_draw_viewer_menu()
         }
         if (ImGui::Checkbox("flat shading", &runtime.app_ptr->options.flat_shading)) { needs_render_update = true; }
         if (ImGui::Checkbox("render UV", &runtime.app_ptr->options.render_UV)){ needs_render_update = true; }
+        if (ImGui::SliderInt("scale UV", &runtime.scale_uv, 1, 10)){ needs_render_update = true; }
         if (ImGui::Combo("matcap (m)", &runtime.matcap_index, runtime.matcap_labels)) { needs_render_update = true; }
     }
     
