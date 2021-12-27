@@ -26,8 +26,8 @@ public:
 	RowMatrixXd X;
 	void init();
 	void step();
-	void render_pins();
-	std::vector<Vector3d> pin_loc;
+	std::map<int,Vector3d> pins;
+	std::vector<int> hand;
 };
 
 int main(int argc, char *argv[])
@@ -60,7 +60,6 @@ int main(int argc, char *argv[])
 	// Initialize the deformer
 	Deformer solver;
 	solver.init();
-	solver.render_pins();
 
 	// Create app that directly interfaces with MeshData
 	Application app;
@@ -68,7 +67,6 @@ int main(int argc, char *argv[])
 	app.solve_frame = [&](RowMatrixXd &X)
 	{
 		solver.step();
-		solver.render_pins();
 		X = solver.X;
 	};
     app.start();
@@ -98,54 +96,60 @@ void Deformer::init()
 	for (int i=0; i<(int)X.rows(); ++i)
 		box.extend(V.row(i).transpose());
 
-	// Get indices of feet
-	pin_loc.clear();
-	std::vector<int> feet_inds;
+	// Get indices of left hand and feet
+	pins.clear();
+	hand.clear();
+	std::vector<int> b_inds;
 	for (int i=0; i<(int)X.rows(); ++i)
 	{
+		if (X(i,0) > box.max()[0] - 1e-2)
+		{
+			pins.emplace(i,X.row(i));
+			hand.emplace_back(i);
+			b_inds.emplace_back(i);
+		}
 		if (X(i,1) < box.min()[1] + 1e-2)
 		{
-			feet_inds.emplace_back(i);
-			pin_loc.emplace_back(X.row(i));
+			pins.emplace(i,X.row(i));
+			b_inds.emplace_back(i);
 		}
 	}
 
-	Eigen::VectorXi b = Map<VectorXi>(feet_inds.data(), feet_inds.size());
+
+	Eigen::VectorXi b = Map<VectorXi>(b_inds.data(), b_inds.size());
 	bool success = igl::arap_precomputation(V,T,3,b,arap_data);
 	mclAssert(success, "failed to init arap");
 }
 
 void Deformer::step()
 {
-/*
     // A frame can be a timestep, iteration, whatever.
     // Counters/timers/etc are recorded per-frame.
     // As a special case, the runtime of this
     // function is recorded in seconds.
 	mclStartFrame();
-	
-	// Step the integrator
-	igl::triangle::scaf_solve(scaf_data, 1);
-	X = scaf_data.w_uv.topRows(X.rows());
-	
-	// Counters (ints) and values (doubles) can
-	// be recorded per-frame. Total/max/avg for all
-	// frames is reported when log.write_... is called.
-    mclSetCounter("example_counter", X.size());
-    mclSetValue("example_value", X.norm());
-*/
-}
 
-void Deformer::render_pins()
-{
-	// RenderCache is a singleton that's used for
-    // visual debugging. Any data added to RenderCache
-    // will be drawn on the next frame and cleared.
-    // It not efficient.
-    RenderCache &cache = RenderCache::get();
-	int np = arap_data.b.rows();
-	for (int i=0; i<np; ++i)
-		cache.add_point<3>(X.row(arap_data.b[i]));
+	// Get the number of frames, stored in logger
+	// and updated by the mclStartFrame function.
+	int num_frames = mcl::Logger::get().curr_frame;
+	
+	// Slowly move hand
+	for (int i=0; i<(int)hand.size() && num_frames<30; ++i)
+	{
+		mclAssert(pins.count(hand[i])>0);
+		pins[hand[i]] += Vector3d(0.01,0,0);
+	}
 
-	cache.add_sphere(Vector3d(0,1,0), 1);
+	// Set pins
+	RowMatrixXd bc(pins.size(), 3);
+	mclAssert((int)pins.size() == (int)arap_data.b.rows());
+	for (int i=0; i<(int)arap_data.b.rows(); ++i)
+	{
+		int idx = arap_data.b[i];
+		mclAssert(pins.count(idx)>0);
+		bc.row(i) = pins[idx];
+	}
+	
+	// Solve arap
+	igl::arap_solve(bc, arap_data, X);
 }
