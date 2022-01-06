@@ -110,7 +110,9 @@ protected:
     struct Edge
     {
         uint32_t v0, v1;
-        Edge(uint32_t v0, uint32_t v1) : v0(v0 < v1 ? v0 : v1), v1(v0 < v1 ? v1 : v0) {}
+        Edge(uint32_t v0_, uint32_t v1_) :
+            v0(v0_ < v1_ ? v0_ : v1_),
+            v1(v0_ < v1_ ? v1_ : v0_) {}
         inline bool operator <(const Edge &rhs) const
         {
             return v0 < rhs.v0 || (v0 == rhs.v0 && v1 < rhs.v1);
@@ -178,7 +180,7 @@ public:
         using namespace Eigen;
         std::vector<Vector3d> prevV = vertices;
         std::vector<Vector3i> prevF = faces;
-        int nf = prevF.size();
+        uint32_t nf = prevF.size();
 
         //meshOut.vertices = meshIn.vertices;
         faces.clear();

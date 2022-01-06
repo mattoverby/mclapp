@@ -123,5 +123,5 @@ void draw_scaf(Optimizer *optimizer)
     RenderCache &cache = RenderCache::get();
     MatrixXd C_scaf = MatrixXd::Ones(optimizer->scaf_data.s_T.rows(), 3);
     C_scaf *= 0.7; // gray
-    //cache.add_triangles(optimizer->scaf_data.w_uv, optimizer->scaf_data.s_T, C_scaf);
+    cache.add_triangles(optimizer->scaf_data.w_uv, optimizer->scaf_data.s_T, C_scaf);
 }
