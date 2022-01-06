@@ -47,6 +47,12 @@ public:
 		int subdiv=1,
         const Eigen::Vector3d &c=Eigen::Vector3d(1,0,0));
 
+	template<int DIM>
+    void add_box(
+        const Eigen::Matrix<double,DIM,1> &bmin,
+        const Eigen::Matrix<double,DIM,1> &bmax,
+        const Eigen::Vector3d &c = Eigen::Vector3d(1,0,0));
+
     // Used by mcl::Application for rendering with for libigl
     void append_points(Eigen::MatrixXd &P, Eigen::MatrixXd &C);
     void append_lines(Eigen::MatrixXd &E0, Eigen::MatrixXd &E1, Eigen::MatrixXd &C);

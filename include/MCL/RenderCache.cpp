@@ -238,6 +238,75 @@ void RenderCache::add_sphere(
     add_triangles(V,F,C);
 }
 
+template<>
+void RenderCache::add_box(
+    const Eigen::Matrix<double,2,1> &bmin,
+    const Eigen::Matrix<double,2,1> &bmax,
+    const Eigen::Vector3d &color)
+{
+    using namespace Eigen;
+    // d c
+    // a b
+    Eigen::MatrixXd V(4, 2);
+    V.row(0) = bmin; // a
+    V.row(1) = RowVector2d(bmax[0], bmin[1]); // b
+    V.row(2) = bmax; // c
+    V.row(3) = RowVector2d(bmin[0], bmax[1]); // d
+    Eigen::MatrixXi F(2,3);
+    F.row(0) = RowVector3i(0, 1, 3);
+    F.row(1) = RowVector3i(1, 2, 3);
+    Eigen::MatrixXd C(2,3);
+    C.row(0) = color;
+    C.row(1) = color;
+    add_triangles(V,F,C);
+}
+
+template<>
+void RenderCache::add_box(
+    const Eigen::Matrix<double,3,1> &bmin,
+    const Eigen::Matrix<double,3,1> &bmax,
+    const Eigen::Vector3d &color)
+{
+    using namespace Eigen;
+
+    // Bottom quad
+    Vector3d a = bmin;
+    Vector3d b(bmax[0], bmin[1], bmin[2]);
+    Vector3d c(bmax[0], bmin[1], bmax[2]);
+    Vector3d d(bmin[0], bmin[1], bmax[2]);
+    // Top quad
+    Vector3d e(bmin[0], bmax[1], bmin[2]);
+    Vector3d f(bmax[0], bmax[1], bmin[2]);
+    Vector3d g = bmax;
+    Vector3d h(bmin[0], bmax[1], bmax[2]);
+
+    Eigen::MatrixXd V(8, 3);
+    V.row(0) = a;
+    V.row(1) = b;
+    V.row(2) = c;
+    V.row(3) = d;
+    V.row(4) = e;
+    V.row(5) = f;
+    V.row(6) = g;
+    V.row(7) = h;
+    Eigen::MatrixXi F(12, 3);
+    F.row(0) = RowVector3i(0, 7, 4); // n = -x
+    F.row(1) = RowVector3i(0, 3, 7); // n = -x
+    F.row(2) = RowVector3i(1, 5, 6); // n = +x
+    F.row(3) = RowVector3i(1, 6, 2); // n = +x
+    F.row(4) = RowVector3i(0, 1, 2); // n = -y
+    F.row(5) = RowVector3i(0, 2, 3); // n = -y
+    F.row(6) = RowVector3i(4, 6, 5); // n = +y
+    F.row(7) = RowVector3i(4, 7, 6); // n = +y
+    F.row(8) = RowVector3i(1, 0, 4); // n = -z
+    F.row(9) = RowVector3i(1, 4, 5); // n = -z
+    F.row(10) = RowVector3i(3, 2, 7); // n = +z
+    F.row(11) = RowVector3i(2, 6, 7); // n = +z
+    Eigen::MatrixXd C(12,3);
+    for (int i=0; i<12; ++i) { C.row(i)=color; }
+    add_triangles(V,F,C);
+}
+
 // Add points to bottom of matrix
 void RenderCache::append_points(Eigen::MatrixXd &P, Eigen::MatrixXd &C)
 {

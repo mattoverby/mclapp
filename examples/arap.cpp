@@ -26,8 +26,10 @@ public:
 	RowMatrixXd X;
 	void init();
 	void step();
+	void render();
 	std::map<int,Vector3d> pins;
 	std::vector<int> hand;
+	AlignedBox<double,3> feet_box, hand_box;
 };
 
 int main(int argc, char *argv[])
@@ -60,6 +62,7 @@ int main(int argc, char *argv[])
 	// Initialize the deformer
 	Deformer solver;
 	solver.init();
+	solver.render();
 
 	// Create app that directly interfaces with MeshData
 	Application app;
@@ -68,6 +71,7 @@ int main(int argc, char *argv[])
 	{
 		solver.step();
 		X = solver.X;
+		solver.render();
 	};
     app.start();
 
@@ -99,6 +103,8 @@ void Deformer::init()
 	// Get indices of left hand and feet
 	pins.clear();
 	hand.clear();
+	feet_box.setEmpty();
+	hand_box.setEmpty();
 	std::vector<int> b_inds;
 	for (int i=0; i<(int)X.rows(); ++i)
 	{
@@ -107,14 +113,18 @@ void Deformer::init()
 			pins.emplace(i,X.row(i));
 			hand.emplace_back(i);
 			b_inds.emplace_back(i);
+			hand_box.extend(X.row(i).transpose());
 		}
 		if (X(i,1) < box.min()[1] + 1e-2)
 		{
 			pins.emplace(i,X.row(i));
 			b_inds.emplace_back(i);
+			feet_box.extend(X.row(i).transpose());
 		}
 	}
 
+	feet_box.extend(feet_box.min()-Vector3d::Ones()*0.01);
+	feet_box.extend(feet_box.max()+Vector3d::Ones()*0.01);
 
 	Eigen::VectorXi b = Map<VectorXi>(b_inds.data(), b_inds.size());
 	bool success = igl::arap_precomputation(V,T,3,b,arap_data);
@@ -152,4 +162,24 @@ void Deformer::step()
 	
 	// Solve arap
 	igl::arap_solve(bc, arap_data, X);
+}
+
+void Deformer::render()
+{
+	// Mesh rendering already handled by Application and MeshData
+	// Add auxiliary and debug rendering with RenderCache
+	Vector3d color = Vector3d(0.7,0.1,0.1);
+	RenderCache &cache = RenderCache::get();
+
+	// Update hand box
+	hand_box.setEmpty();
+	int n_hand = hand.size();
+	for (int i=0; i<n_hand; ++i)
+		hand_box.extend(X.row(hand[i]).transpose());
+
+	// Set render cache
+	Vector3d c_offset = Vector3d(0,0.05,0.2); // looks nicer
+	double r = hand_box.sizes().maxCoeff()*0.5;
+	cache.add_sphere(hand_box.center()+c_offset, r, 3, color);
+	cache.add_box(feet_box.min(), feet_box.max(), color);
 }
