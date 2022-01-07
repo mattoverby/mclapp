@@ -353,7 +353,9 @@ void RenderCache::append_triangles(RowMatrixXd &V, RowMatrixXi &F, RowMatrixXd &
 
     int prev_v = V.rows();
     int v_cols = std::min(3, (int)V.cols());
+    if (v_cols == 0) { v_cols = tri_V.cols(); }
     mclAssert(tri_V.cols() >= v_cols);
+    mclAssert(v_cols >= 2);
     V.conservativeResize(prev_v+tri_V.rows(), v_cols);
     V.bottomRows(tri_V.rows()) = tri_V.leftCols(v_cols);
     
@@ -361,7 +363,8 @@ void RenderCache::append_triangles(RowMatrixXd &V, RowMatrixXi &F, RowMatrixXd &
     F.conservativeResize(prev_f+tri_F.rows(), 3);
     F.bottomRows(tri_F.rows()) = tri_F;
     F.bottomRows(tri_F.rows()).array() += prev_v;
-    
+    mclAssert(tri_C.cols()==3, "TODO: opacity in RenderCache");
+
     if (C.rows()==0)
     {
         C = tri_C;
@@ -376,7 +379,8 @@ void RenderCache::append_triangles(RowMatrixXd &V, RowMatrixXi &F, RowMatrixXd &
             v_to_f[tri_F(i,2)].emplace_back(i);
         }
         int prev_c = C.rows();
-        C.conservativeResize(prev_c+tri_V.rows(),3);
+        int c_cols = C.cols();
+        C.conservativeResize(prev_c+tri_V.rows(), c_cols);
         for (int i=0; i<(int)tri_V.rows(); ++i)
         {
             Eigen::RowVector3d ci = Eigen::RowVector3d::Zero();
@@ -386,15 +390,19 @@ void RenderCache::append_triangles(RowMatrixXd &V, RowMatrixXi &F, RowMatrixXd &
                 ci += tri_C.row(v_to_f[i][j]);
             }
             ci *= 1.0 / std::max(1.0, double(nt));
-            C.row(prev_c+i) = ci;
+            for (int j=0; j<3; ++j)
+            {
+                C(prev_c+i,j) = ci[j];
+            }
+            if (c_cols == 4) { C(prev_c+i,3) = 1; }
         }
     }
     else
     {   
         int prev_c = C.rows();
-        C.conservativeResize(prev_c+tri_C.rows(), 3);
+        C.conservativeResize(prev_c+tri_C.rows(), C.cols());
         mclAssert(tri_C.cols()==3);
-        C.bottomRows(tri_C.rows()) = tri_C;
+        C.bottomRows(tri_C.rows()).leftCols(3) = tri_C;
     }
 }
 

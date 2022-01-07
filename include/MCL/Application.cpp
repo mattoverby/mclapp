@@ -6,7 +6,9 @@
 #include "Screenshot.hpp"
 #include "RenderCache.hpp"
 #include "Logger.hpp"
+
 #include "MCL/AssertHandler.hpp"
+#include "MCL/SignedVolume.hpp"
 
 #include <igl/per_face_normals.h>
 #include <igl/per_corner_normals.h>
@@ -37,9 +39,11 @@ struct RuntimeOptions
 	bool solve_next_frame;
 	bool solved_last_frame;
 	bool screenshot_each_frame;
+	bool show_inverted;
 	std::vector<Vector3d> mesh_colors; // default per-mesh colors
 	int scale_uv;
 	int matcap_index; // 0 = none
+	float mesh_opacity;
 	std::vector<std::string> matcap_labels;
 	std::vector<Texture> matcaps;
 	Texture ref_tex;
@@ -56,8 +60,10 @@ struct RuntimeOptions
 		solve_next_frame(false),
 		solved_last_frame(false),
 		screenshot_each_frame(false),
+		show_inverted(false),
 		scale_uv(4),
 		matcap_index(0),
+		mesh_opacity(1),
 		gui_plugin_idx(-1),
 		app_ptr(nullptr),
 		viewer_ptr(nullptr)
@@ -265,12 +271,22 @@ void Application::redraw(const RowMatrixXd &X)
 		RowMatrixXi F;
 		append_mesh(X, V, F, C, N);
 
-		mclAssert(V.cols() == 3);
-		viewer->data().set_face_based(true);
-		viewer->data().set_mesh(V, F);
+		if (runtime.mesh_opacity < 1)
+		{
+			// TODO: Improve this
+			C.conservativeResize(C.rows(), 4);
+			C.col(3).array() = runtime.mesh_opacity;
+		}
+
+		if (V.rows() > 0)
+		{
+			mclAssert(V.cols() == 3);
+			viewer->data().set_face_based(true);
+			viewer->data().set_mesh(V, F);
+		}
 		if (C.rows()>0) { viewer->data().set_colors(C); }
 		if (N.rows()>0) { viewer->data().set_normals(N); }
-		
+
 	    // Set texture from matcap if desired
         if (runtime.matcap_index > 0)
         {
@@ -322,6 +338,58 @@ void Application::redraw(const RowMatrixXd &X)
 	cache.clear();
 }
 
+void Application::append_inverted_elements(const RowMatrixXd &X)
+{
+	using namespace Eigen;
+	const MeshData &meshdata = MeshData::get();
+	int dim = X.cols();
+	mclAssert(meshdata.dim() == dim);
+
+	std::vector<int> new_F;
+
+	const RowMatrixXi &E = meshdata.get_elements();
+	int num_elem = E.rows();
+	int num_inverted = 0;
+	for (int i=0; i<num_elem; ++i)
+	{
+		if (dim==3)
+		{
+			Vector3d v[4] = {
+				X.row(E(i,0)),
+				X.row(E(i,1)),
+				X.row(E(i,2)),
+				X.row(E(i,3)) };
+			double vol = mcl::signed_tet_volume(v[0],v[1],v[2],v[3]);
+			if (vol > 0) { continue; }
+
+			std::vector<Eigen::Vector3i> f = mcl::faces_from_tet(E.row(i));
+			mclAssert((int)f.size() == 4);
+			for (int j=0; j<4; ++j)
+			{
+				new_F.emplace_back(f[j][0]);
+				new_F.emplace_back(f[j][1]);
+				new_F.emplace_back(f[j][2]);
+			}
+			num_inverted++;
+		}	
+		else if (dim==2)
+		{
+			mclAssert(false, "TODO: Render inverted triangles");
+		}
+	}
+
+	std::cout << "(Application) num inverted elems: " << num_inverted << std::endl;
+	if (new_F.size()>0)
+	{
+		RowMatrixXi F = Map<RowMatrixXi>(new_F.data(), (int)new_F.size()/3, 3);
+		RowMatrixXd C = RowMatrixXd::Zero(F.rows(), 3);
+		C.col(0).array() = 1;
+		C.col(1).array() = 1;
+		RenderCache &cache = RenderCache::get();
+		cache.add_triangles(X, F, C);
+	}
+}
+
 void Application::append_mesh(const RowMatrixXd &X,
     RowMatrixXd &V, RowMatrixXi &F,
 	RowMatrixXd &C, RowMatrixXd &N)
@@ -330,12 +398,15 @@ void Application::append_mesh(const RowMatrixXd &X,
 	F = meshdata.get_faces();
 	V = X;
 	bool compute_colors = true;
-	
+
 	if (meshdata.is_texture_param() && !options.render_UV)
 	{
+		// Don't compute colors. The texture will be applied
+		// after the Viewer::set_mesh call.
 	    compute_colors = false;
 		V = meshdata.get_rest();
 		//C = RowMatrixXd::Ones(F.rows(), 3)*0.7;
+		// TODO append RenderCache
 	}
 	else if (X.cols() == 2)
 	{
@@ -357,6 +428,14 @@ void Application::append_mesh(const RowMatrixXd &X,
 			C.block(F_offset[i],0,nf,3).col(0).array() = runtime.mesh_colors[c_idx][0];
 			C.block(F_offset[i],0,nf,3).col(1).array() = runtime.mesh_colors[c_idx][1];
 			C.block(F_offset[i],0,nf,3).col(2).array() = runtime.mesh_colors[c_idx][2];
+		}
+
+		if (runtime.show_inverted)
+		{
+			V = RowMatrixXd();
+			F = RowMatrixXi();
+			C = RowMatrixXd();
+			append_inverted_elements(X);
 		}
 
 	    RenderCache &cache = RenderCache::get();
@@ -454,9 +533,11 @@ static inline void callback_draw_viewer_menu()
             runtime.viewer_ptr->data().show_lines = show_lines;
             needs_render_update = true;
         }
+		if (ImGui::Checkbox("show inverted", &runtime.show_inverted)){ needs_render_update = true; }
         if (ImGui::Checkbox("flat shading", &runtime.app_ptr->options.flat_shading)) { needs_render_update = true; }
         if (ImGui::Checkbox("render UV", &runtime.app_ptr->options.render_UV)){ needs_render_update = true; }
         if (ImGui::SliderInt("scale UV", &runtime.scale_uv, 1, 10)){ needs_render_update = true; }
+		if (ImGui::SliderFloat("mesh opacity", &runtime.mesh_opacity, 0.f, 1.f)){ needs_render_update = true; }		
         if (ImGui::Combo("matcap (m)", &runtime.matcap_index, runtime.matcap_labels)) { needs_render_update = true; }
     }
     

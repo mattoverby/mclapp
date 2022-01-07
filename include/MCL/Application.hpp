@@ -37,8 +37,11 @@ protected:
 
     std::shared_ptr<igl::opengl::glfw::Viewer> viewer_ptr; // used if start() is called
 
-	void append_mesh(const RowMatrixXd &X, RowMatrixXd &V, RowMatrixXi &F,
+	void append_mesh(const RowMatrixXd &X,
+		RowMatrixXd &V, RowMatrixXi &F,
 		RowMatrixXd &C, RowMatrixXd &N);
+
+	void append_inverted_elements(const RowMatrixXd &X);
 };
 
 } // end namespace mcl
