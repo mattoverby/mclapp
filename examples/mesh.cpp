@@ -30,7 +30,8 @@ int main(int argc, char *argv[])
 	(void)(argc);
 	(void)(argv);
 
-	std::string obj = MCL_APP_ROOT_DIR "/data/sphere.obj";
+	//std::string obj = MCL_APP_ROOT_DIR "/data/sphere.obj";
+	std::string obj = MCL_APP_ROOT_DIR "/data/bunny_lowres.obj";
 	MatrixXd V;
 	MatrixXi F;
 	if (!igl::readOBJ(obj, V, F))
@@ -43,7 +44,7 @@ int main(int argc, char *argv[])
 
 	// Create app that directly interfaces with MeshData
 	mcl::Application app;
-	app.options.name = "sphere"; // optional
+	app.options.name = "bunny"; // optional
 	app.draw_gui_callback = &custom_gui_options; // optional
     app.start();
 
