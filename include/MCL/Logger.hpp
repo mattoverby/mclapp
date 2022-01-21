@@ -97,8 +97,11 @@ public:
 	static std::string get_output_dir();
 
 	// Custom logging callback
-	std::function<void()> begin_frame;
-	std::function<void()> end_frame;
+	// begin_frame is called right after mclStartFrame()
+	// end_frame is called when the frame scope ends, but after
+	// the frame timings (runtime_s) is stored.
+	std::vector<std::function<void()> > begin_frame;
+	std::vector<std::function<void()> > end_frame;
 
 	// Functions that are called at the beginning and ending
 	// of a function. Used for timing and debugging.

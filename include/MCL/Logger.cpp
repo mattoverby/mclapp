@@ -659,17 +659,22 @@ LogFrameWrapper::LogFrameWrapper()
 {
 	Logger &log = Logger::get();
 	log.curr_frame++;
-	if (log.begin_frame != nullptr)
-		log.begin_frame();
+	if (log.begin_frame.size())
+	{
+		int n = log.begin_frame.size();
+		for (int i=0; i<n; ++i) { log.begin_frame[i](); }
+	}
 }
 
 LogFrameWrapper::~LogFrameWrapper()
 {
 	Logger &log = Logger::get();
 	log.add_runtime_s(log.curr_frame, timer.elapsed_s());
-
-	if (log.end_frame != nullptr)
-		log.end_frame();
+	if (log.end_frame.size())
+	{
+		int n = log.end_frame.size();
+		for (int i=0; i<n; ++i) { log.end_frame[i](); }
+	}
 }
 
 } // ns mcl
