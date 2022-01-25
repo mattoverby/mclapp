@@ -13,6 +13,8 @@
 #include <igl/per_face_normals.h>
 #include <igl/per_corner_normals.h>
 #include <igl/png/readPNG.h>
+#include <igl/writeOBJ.h>
+#include <igl/writeMESH.h>
 #include <igl/opengl/glfw/Viewer.h>
 #ifdef MCL_APP_USE_IMGUI
     #include <igl/opengl/glfw/imgui/ImGuiMenu.h>
@@ -520,6 +522,27 @@ static inline void callback_draw_viewer_menu()
 	}
 	if (ImGui::Checkbox("screenshot background", &runtime.screenshotter.render_background)){}
 	if (ImGui::Checkbox("screenshot each frame", &runtime.screenshot_each_frame)){}
+	if (ImGui::Button("export mesh"))
+	{
+	    auto P = meshdata.get_elements();
+	    bool is_volume = P.cols()==4;
+	    mclAssert(runtime.X.cols()==3);
+	    mclAssert(P.rows()>0);
+	    std::string fileout = mcl::Logger::get().get_output_dir();
+	    fileout += runtime.app_ptr->options.name;
+	    if (is_volume)
+	    {
+	        fileout += ".mesh";
+            igl::writeMESH(fileout, runtime.X, P, meshdata.get_faces());
+	    }
+	    else
+	    {
+	        mclAssert(P.cols()==3);
+            fileout += ".obj";
+            igl::writeOBJ(fileout, runtime.X, P);
+	    }
+        std::cout << "Exported " << fileout << std::endl;
+	}
 	if (ImGui::CollapsingHeader("solver", ImGuiTreeNodeFlags_DefaultOpen))
 	{
         if (ImGui::Button("solve frame")) { runtime.solve_next_frame=true; }
