@@ -71,7 +71,6 @@ list(APPEND MCLAPP_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include)
 if(MCL_USE_IMGUI)
     set(IMGUI_LIB igl::opengl_glfw_imgui)
 else()
-    message("MCL USE IMGUI OFF")
     set(IMGUI_LIB "")
 endif()
 

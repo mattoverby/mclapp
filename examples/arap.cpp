@@ -77,17 +77,16 @@ int main(int argc, char *argv[])
 
 	std::cout << "Press space to start/stop the solver" << std::endl;
 
-	// Export per-iteration timings/counters to csv
-	Logger &log = Logger::get();
-	log.write_all(app.options.name); // output/dillo/dillo_log.csv
+	// Export per-iteration timings to csv
+	std::string out_csv = app.options.name+".csv";
+    mcl::WriteLogCSV(out_csv.c_str());
 	return EXIT_SUCCESS;
 }
 
 void Deformer::init()
 {
-    // mclStart begins a named timer. When the scope
-    // ends, the timer is stopped.
-	mclStart("Deformer::init");
+    mcl::ResetLog();
+    mcl::TimedScope("Deformer::init");
 
 	const MeshData &meshdata = MeshData::get();
 	const RowMatrixXd &V = meshdata.get_rest(); // 3D verts
@@ -134,14 +133,14 @@ void Deformer::init()
 void Deformer::step()
 {
     // A frame can be a timestep, iteration, whatever.
-    // Counters/timers/etc are recorded per-frame.
+    // Timers/etc are recorded per-frame.
     // As a special case, the runtime of this
     // function is recorded in seconds.
-	mclStartFrame();
+    mcl::IncrementFrame();
 
 	// Get the number of frames, stored in logger
 	// and updated by the mclStartFrame function.
-	int num_frames = mcl::Logger::get().curr_frame;
+	int num_frames = mcl::Logger::get().frame_number();
 	
 	// Slowly move hand
 	for (int i=0; i<(int)hand.size() && num_frames<30; ++i)

@@ -5,10 +5,10 @@
 #include "MeshData.hpp"
 #include "Screenshot.hpp"
 #include "RenderCache.hpp"
-#include "Logger.hpp"
 
 #include "MCL/AssertHandler.hpp"
-#include "MCL/SignedVolume.hpp"
+#include "MCL/SignedMeasure.hpp"
+#include "MCL/Logger.hpp"
 
 #include <igl/per_face_normals.h>
 #include <igl/per_corner_normals.h>
@@ -166,12 +166,12 @@ bool Application::post_draw()
 	}
 
 	// Should we stop animating?
-	Logger &log = Logger::get();
-	if (log.pause_simulation)
-	{
-		log.pause_simulation = false;
-		options.animate = false;
-	}
+//	Logger &log = Logger::get();
+//	if (log.pause_simulation)
+//	{
+//		log.pause_simulation = false;
+//		options.animate = false;
+//	}
 
 	runtime.solved_last_frame = false;
 	return false;

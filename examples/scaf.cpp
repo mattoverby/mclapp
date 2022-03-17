@@ -63,18 +63,17 @@ int main(int argc, char *argv[])
 
 	std::cout << "Press space to start/stop the solver" << std::endl;
 
-	// Export per-iteration timings/counters to csv
-	Logger &log = Logger::get();
-	log.write_all(app.options.name); // output/camel/camel_log.csv
+	// Export per-iteration timings to csv
+	std::string out_csv = app.options.name+".csv";
+    mcl::WriteLogCSV(out_csv.c_str());
 
 	return EXIT_SUCCESS;
 }
 
 void Optimizer::init()
 {
-    // mclStart begins a named timer. When the scope
-    // ends, the timer is stopped.
-	mclStart("Optimizer::init");
+    mcl::ResetLog();
+    mcl::TimedScope("Optimizer::init");
 
 	const MeshData &meshdata = MeshData::get();
 	const RowMatrixXd &V = meshdata.get_rest(); // 3D verts
@@ -101,7 +100,7 @@ void Optimizer::step()
     // Counters/timers/etc are recorded per-frame.
     // As a special case, the runtime of this
     // function is recorded in seconds.
-	mclStartFrame();
+    mcl::IncrementFrame();
 	
 	// Step the integrator
 	igl::triangle::scaf_solve(scaf_data, 1);
@@ -110,8 +109,11 @@ void Optimizer::step()
 	// Counters (ints) and values (doubles) can
 	// be recorded per-frame. Total/max/avg for all
 	// frames is reported when log.write_... is called.
-    mclSetCounter("example_counter", X.size());
-    mclSetValue("example_value", X.norm());
+	// TODO reimplement these
+    //mclSetCounter("example_counter", X.size());
+    //mclSetValue("example_value", X.norm());
+    
+    //mcl::StopFrame();
 }
 
 void draw_scaf(Optimizer *optimizer)

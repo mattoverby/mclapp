@@ -38,10 +38,19 @@ static inline bool canary_is_alive(const std::string &canary_file)
 	return bool(f.good());
 }
 
+static inline std::string make_write_prefix(const std::string &test)
+{
+    // Make directories as needed
+    std::string dir_prefix = std::string(MCL_APP_OUTPUT_DIR)+'/'+test+'/';
+    std::experimental::filesystem::path p(dir_prefix);
+    std::experimental::filesystem::create_directories(p.parent_path());
+    return dir_prefix+test+'_';
+}
+
 void Headless::start()
 {
     if (options.name.size()==0) { options.name = "mclapp"; }
-	std::string prefix = mcl::Logger::make_write_prefix(options.name);
+	std::string prefix = make_write_prefix(options.name);
 
 	std::string canary_file = prefix + "canary.txt";
     make_canary(canary_file);
@@ -53,7 +62,7 @@ void Headless::start()
     mcl::Logger &log = mcl::Logger::get();
     if (options.export_frame_obj)
     {
-        save_frame_obj(prefix, log.curr_frame, x);
+        save_frame_obj(prefix, log.frame_number(), x);
     }
 
 	while (true)
@@ -68,7 +77,7 @@ void Headless::start()
             post_solve_callback();
 
         if (options.export_frame_obj)    
-            save_frame_obj(prefix, log.curr_frame, x);
+            save_frame_obj(prefix, log.frame_number(), x);
 
 		// Clear render cache so it doesn't grow, even
 		// though we aren't rendering anything.

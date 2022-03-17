@@ -4,7 +4,7 @@
 #include "MeshData.hpp"
 #include "MCL/AssertHandler.hpp"
 #include "MCL/Sort.hpp"
-#include "MCL/SignedVolume.hpp"
+#include "MCL/SignedMeasure.hpp"
 
 #include <cereal/cereal.hpp>
 #include "MCL/EigenCereal.hpp"
