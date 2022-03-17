@@ -528,7 +528,7 @@ static inline void callback_draw_viewer_menu()
 	    bool is_volume = P.cols()==4;
 	    mclAssert(runtime.X.cols()==3);
 	    mclAssert(P.rows()>0);
-	    std::string fileout = mcl::Logger::get().get_output_dir();
+	    std::string fileout = "";
 	    fileout += runtime.app_ptr->options.name;
 	    if (is_volume)
 	    {

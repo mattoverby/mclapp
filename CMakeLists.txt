@@ -12,7 +12,7 @@ include(DownloadProject)
 option(MCL_DEBUG "Compile in test mode" OFF)
 option(MCL_BUILD_EXAMPLES "Compile examples" ON)
 option(MCL_HEADLESS "Compile without render libs" OFF)
-option(MCL_USE_IMGUI "Compile with IMGUI" OFF)
+option(MCL_USE_IMGUI "Compile with IMGUI" ON)
 
 add_definitions(-DMCL_APP_OUTPUT_DIR="${CMAKE_BINARY_DIR}/output")
 add_definitions(-DMCL_APP_ROOT_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
